@@ -77,9 +77,34 @@ exports.EndpointsQuery = `query Endpoints {
           ... on ThermostatMode {
             thermostatModeValue
           }
+          ... on Mode {
+            modeValue
+          }
         }
         configuration {
           ... on RangeConfiguration {
+            friendlyName {
+              value {
+                text
+              }
+            }
+          }
+          ... on ModeConfiguration {
+            friendlyName {
+              value {
+                text
+              }
+            }
+            supportedModes {
+              value
+              friendlyNames {
+                value {
+                  text
+                }
+              }
+            }
+          }
+          ... on ToggleConfiguration {
             friendlyName {
               value {
                 text
