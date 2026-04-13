@@ -294,16 +294,29 @@ export class AlexaApiWrapper {
 
   sendTextCommand(text: string): TaskEither<AlexaApiError, void> {
     const serials = this.alexaRemote.serialNumbers;
-    const firstSerial = Object.keys(serials)[0];
+    const serialKeys = Object.keys(serials);
+    this.log.info(
+      `Available Alexa devices: ${JSON.stringify(
+        serialKeys.map((k) => ({
+          serial: k,
+          name: serials[k]?.deviceAccountId ?? 'unknown',
+        })),
+      )}`,
+    )();
+    const firstSerial = serialKeys[0];
     if (!firstSerial) {
       return TE.left(
         new HttpError('No Alexa device found to route text command through'),
       );
     }
+    this.log.info(
+      `Sending text command via device ${firstSerial}: "${text}"`,
+    )();
     return pipe(
       TE.tryCatch(
         () =>
-          AlexaApiWrapper.toPromise<void>((cb) =>
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          AlexaApiWrapper.toPromise<any>((cb) =>
             this.alexaRemote.sendSequenceCommand(
               firstSerial,
               'textCommand',
@@ -316,6 +329,12 @@ export class AlexaApiWrapper {
             `Error sending text command. Reason: ${(reason as Error).message}`,
           ),
       ),
+      TE.tap((result) => {
+        this.log.info(
+          `Text command result: ${JSON.stringify(result)}`,
+        )();
+        return TE.of(result);
+      }),
       TE.map(constVoid),
     );
   }

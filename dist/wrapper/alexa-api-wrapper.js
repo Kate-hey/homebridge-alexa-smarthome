@@ -127,11 +127,25 @@ class AlexaApiWrapper {
     }
     sendTextCommand(text) {
         const serials = this.alexaRemote.serialNumbers;
-        const firstSerial = Object.keys(serials)[0];
+        const serialKeys = Object.keys(serials);
+        this.log.info(`Available Alexa devices: ${JSON.stringify(serialKeys.map((k) => {
+            var _a, _b;
+            return ({
+                serial: k,
+                name: (_b = (_a = serials[k]) === null || _a === void 0 ? void 0 : _a.deviceAccountId) !== null && _b !== void 0 ? _b : 'unknown',
+            });
+        }))}`)();
+        const firstSerial = serialKeys[0];
         if (!firstSerial) {
             return TE.left(new errors_1.HttpError('No Alexa device found to route text command through'));
         }
-        return (0, function_1.pipe)(TE.tryCatch(() => AlexaApiWrapper.toPromise((cb) => this.alexaRemote.sendSequenceCommand(firstSerial, 'textCommand', text, cb)), (reason) => new errors_1.HttpError(`Error sending text command. Reason: ${reason.message}`)), TE.map(function_1.constVoid));
+        this.log.info(`Sending text command via device ${firstSerial}: "${text}"`)();
+        return (0, function_1.pipe)(TE.tryCatch(() => 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        AlexaApiWrapper.toPromise((cb) => this.alexaRemote.sendSequenceCommand(firstSerial, 'textCommand', text, cb)), (reason) => new errors_1.HttpError(`Error sending text command. Reason: ${reason.message}`)), TE.tap((result) => {
+            this.log.info(`Text command result: ${JSON.stringify(result)}`)();
+            return TE.of(result);
+        }), TE.map(function_1.constVoid));
     }
     changeDeviceState(entityId, parameters, entityType = 'APPLIANCE') {
         return AlexaApiWrapper.toPromise(this.alexaRemote.executeSmarthomeDeviceAction.bind(this.alexaRemote, [entityId], 
