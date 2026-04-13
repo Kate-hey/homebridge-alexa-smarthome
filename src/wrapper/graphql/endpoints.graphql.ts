@@ -92,14 +92,6 @@ export const EndpointsQuery = `query Endpoints {
           skillStage
         }
       }
-      associations {
-        endpointId
-        relationshipType
-      }
-      connectedVia {
-        endpointId
-        friendlyName
-      }
     }
   }
 }`;

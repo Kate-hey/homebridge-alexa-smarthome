@@ -92,9 +92,14 @@ export class AlexaApiWrapper {
           ),
       ),
       TE.tap((raw) => {
-        this.log.debug(
-          `RAW GRAPHQL RESPONSE: ${JSON.stringify(raw, undefined, 2)}`,
-        )();
+        const items = raw?.data?.endpoints?.items;
+        if (Array.isArray(items)) {
+          items.forEach((item: Endpoint) => {
+            this.log.debug(
+              `RAW ENDPOINT [${item.friendlyName}]: ${JSON.stringify(item, undefined, 2)}`,
+            )();
+          });
+        }
         return TE.of(raw);
       }),
       TE.flatMapEither(validateGetDevicesSuccessful),
