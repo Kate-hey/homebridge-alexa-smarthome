@@ -20,6 +20,7 @@ export default class FanAccessory extends BaseAccessory {
   private airTempAsset?: RangeFeature;
   private setTempAsset?: RangeFeature;
   private isExhaust = false;
+  private lastDirectionSet = 0;
 
   configureServices() {
     this.service =
@@ -353,11 +354,17 @@ export default class FanAccessory extends BaseAccessory {
 
   async handleDirectionSet(value: CharacteristicValue): Promise<void> {
     const exhaust = value === true || value === 1;
+    if (exhaust === this.isExhaust) {
+      return;
+    }
+    const now = Date.now();
+    if (now - this.lastDirectionSet < 5000) {
+      this.logWithContext('debug', 'Debouncing direction set');
+      return;
+    }
+    this.lastDirectionSet = now;
     const direction = exhaust ? 'exhaust' : 'direct';
-    this.logWithContext(
-      'debug',
-      `Triggered set direction: ${direction}`,
-    );
+    this.logWithContext('debug', `Triggered set direction: ${direction}`);
     const command = `change ${this.device.displayName} direction to ${direction}`;
     return pipe(
       this.platform.alexaApi.sendTextCommand(command),

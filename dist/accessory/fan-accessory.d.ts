@@ -11,6 +11,7 @@ export default class FanAccessory extends BaseAccessory {
     private airTempAsset?;
     private setTempAsset?;
     private isExhaust;
+    private lastDirectionSet;
     configureServices(): void;
     handleActiveGet(): Promise<boolean>;
     handleActiveSet(value: CharacteristicValue): Promise<void>;

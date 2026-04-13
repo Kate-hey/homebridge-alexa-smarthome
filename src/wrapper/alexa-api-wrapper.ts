@@ -313,9 +313,7 @@ export class AlexaApiWrapper {
           ),
         (reason) =>
           new HttpError(
-            `Error sending text command. Reason: ${
-              (reason as Error).message
-            }`,
+            `Error sending text command. Reason: ${(reason as Error).message}`,
           ),
       ),
       TE.map(constVoid),
