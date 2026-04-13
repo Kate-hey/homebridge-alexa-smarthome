@@ -95,8 +95,12 @@ export class AlexaApiWrapper {
         const items = raw?.data?.endpoints?.items;
         if (Array.isArray(items)) {
           items.forEach((item: Endpoint) => {
-            this.log.debug(
-              `RAW ENDPOINT [${item.friendlyName}]: ${JSON.stringify(item, undefined, 2)}`,
+            this.log.info(
+              `RAW ENDPOINT [${item.friendlyName}] features: ${JSON.stringify(
+                item.features,
+                undefined,
+                2,
+              )}`,
             )();
           });
         }
