@@ -59,38 +59,7 @@ class AlexaApiWrapper {
                     reporter.id ===
                         'amzn1.ask.skill.2af008bb-2bb0-4bef-b131-e191f944a87e');
         });
-        // DEBUG: Query all features with __typename to discover mode property/config types
-        const VORNADO_ENDPOINT_ID = 'amzn1.alexa.endpoint.33823809-75ac-401e-9013-9b87f84ce39f';
-        this.executeGraphQlQuery(`query getEndpointAllFeatures($endpointId: String!) {
-        endpoint(id: $endpointId) {
-          features {
-            name
-            instance
-            properties {
-              name
-              __typename
-            }
-            configuration {
-              __typename
-            }
-            operations {
-              name
-            }
-          }
-        }
-      }`, { endpointId: VORNADO_ENDPOINT_ID })
-            .then((res) => this.log.info(`ALL FEATURES WITH TYPES: ${JSON.stringify(res, undefined, 2)}`)())
-            .catch((err) => this.log.error(`ALL FEATURES QUERY ERROR: ${err}`)());
-        return (0, function_1.pipe)(TE.tryCatch(() => this.executeGraphQlQuery(graphql_1.EndpointsQuery), (reason) => new errors_1.HttpError(`Error getting smart home devices. Reason: ${reason.message}`)), TE.tap((raw) => {
-            var _a, _b;
-            const items = (_b = (_a = raw === null || raw === void 0 ? void 0 : raw.data) === null || _a === void 0 ? void 0 : _a.endpoints) === null || _b === void 0 ? void 0 : _b.items;
-            if (Array.isArray(items)) {
-                items.forEach((item) => {
-                    this.log.info(`RAW ENDPOINT [${item.friendlyName}] features: ${JSON.stringify(item.features, undefined, 2)}`)();
-                });
-            }
-            return TE.of(raw);
-        }), TE.flatMapEither(get_devices_1.validateGetDevicesSuccessful), TE.map(A.filter(([e]) => excludeHomebridgeAlexaPluginDevices(e))), TE.tapIO((devices) => {
+        return (0, function_1.pipe)(TE.tryCatch(() => this.executeGraphQlQuery(graphql_1.EndpointsQuery), (reason) => new errors_1.HttpError(`Error getting smart home devices. Reason: ${reason.message}`)), TE.flatMapEither(get_devices_1.validateGetDevicesSuccessful), TE.map(A.filter(([e]) => excludeHomebridgeAlexaPluginDevices(e))), TE.tapIO((devices) => {
             this.deviceStore.deviceCapabilities = (0, save_device_capabilities_1.extractRangeFeatures)(devices);
             devices.forEach(([e, d]) => {
                 this.log.debug(`${d.displayName} ::: Raw device features: ${JSON.stringify(e.features, undefined, 2)}`)();
@@ -131,11 +100,12 @@ class AlexaApiWrapper {
             return res;
         }));
     }
-    setDeviceStateGraphQl(endpointId, featureName, featureOperationName, payload = {}) {
+    setDeviceStateGraphQl(endpointId, featureName, featureOperationName, payload = {}, instance) {
         const request = {
             endpointId,
             featureOperationName,
             featureName,
+            ...(instance ? { instance } : {}),
             ...(Object.keys(payload).length > 0 ? { payload } : {}),
         };
         return (0, function_1.pipe)(TE.tryCatch(() => this.executeGraphQlQuery(graphql_1.SetEndpointFeatures, {

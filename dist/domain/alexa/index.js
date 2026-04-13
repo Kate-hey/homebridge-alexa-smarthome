@@ -35,6 +35,8 @@ exports.SupportedActions = {
     setTargetSetpoint: 'setTargetSetpoint',
     adjustTargetSetpoint: 'adjustTargetSetpoint',
     setThermostatMode: 'setThermostatMode',
+    setRangeValue: 'setRangeValue',
+    adjustRangeValue: 'adjustRangeValue',
 };
 exports.SupportedFeatures = {
     brightness: 'brightness',

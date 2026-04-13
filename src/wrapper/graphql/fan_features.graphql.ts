@@ -15,6 +15,9 @@ export const FanQuery = `query getFanStates(
             value
           }
         }
+        ... on ToggleState {
+          toggleStateValue
+        }
       }
       configuration {
         ... on RangeConfiguration {

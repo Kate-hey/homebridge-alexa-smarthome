@@ -36,6 +36,8 @@ export declare const SupportedActions: {
     readonly setTargetSetpoint: "setTargetSetpoint";
     readonly adjustTargetSetpoint: "adjustTargetSetpoint";
     readonly setThermostatMode: "setThermostatMode";
+    readonly setRangeValue: "setRangeValue";
+    readonly adjustRangeValue: "adjustRangeValue";
 };
 export type SupportedActionsType = keyof typeof SupportedActions;
 export declare const SupportedFeatures: {

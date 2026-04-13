@@ -9,8 +9,10 @@ export interface FanState {
 export const FanFeatures = {
   power: 'power',
   range: 'range',
+  toggle: 'toggle',
 } as const;
 
 export const FanRangeFeatures = {
   airTemperature: 'Air Temperature',
+  setTemperature: 'Set Temperature',
 } as const;

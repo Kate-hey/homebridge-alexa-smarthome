@@ -48,6 +48,7 @@ class FanAccessory extends base_accessory_1.default {
             .getCharacteristic(this.Characteristic.Active)
             .onGet(this.handleActiveGet.bind(this))
             .onSet(this.handleActiveSet.bind(this));
+        // Phase 1: Ambient temperature sensor (read-only, range instance 5)
         (0, function_1.pipe)(this.rangeFeatures, RR.lookup(fan_1.FanRangeFeatures.airTemperature), O.map((asset) => {
             this.tempSensorService =
                 this.platformAcc.getService(this.Service.TemperatureSensor) ||
@@ -56,6 +57,29 @@ class FanAccessory extends base_accessory_1.default {
                 .getCharacteristic(this.Characteristic.CurrentTemperature)
                 .onGet(this.handleCurrentTempGet.bind(this, asset));
         }));
+        // Phase 3: Temperature setpoint (writable, range instance 3)
+        (0, function_1.pipe)(this.rangeFeatures, RR.lookup(fan_1.FanRangeFeatures.setTemperature), O.map((asset) => {
+            this.setTempAsset = asset;
+            this.service
+                .getCharacteristic(this.Characteristic.RotationSpeed)
+                .setProps({ minValue: 15, maxValue: 32, minStep: 1 })
+                .onGet(this.handleSetTempGet.bind(this, asset))
+                .onSet(this.handleSetTempSet.bind(this, asset));
+        }));
+        // Phase 4: Auto mode toggle (instance 4)
+        if (this.device.supportedOperations.includes('turnOn') &&
+            this.device.supportedOperations.includes('turnOff')) {
+            const cachedToggle = this.getCacheValue('toggle');
+            if (O.isSome(cachedToggle)) {
+                this.autoModeService =
+                    this.platformAcc.getService(this.Service.Switch) ||
+                        this.platformAcc.addService(this.Service.Switch, 'Auto Mode', 'auto-mode');
+                this.autoModeService
+                    .getCharacteristic(this.Characteristic.On)
+                    .onGet(this.handleAutoModeGet.bind(this))
+                    .onSet(this.handleAutoModeSet.bind(this));
+            }
+        }
     }
     async handleActiveGet() {
         const determinePowerState = (0, function_1.flow)(A.findFirst(({ featureName }) => featureName === 'power'), O.tap(({ value }) => O.of(this.logWithContext('debug', `Get power result: ${value}`))), O.map(({ value }) => value === 'ON'));
@@ -88,6 +112,55 @@ class FanAccessory extends base_accessory_1.default {
             this.logWithContext('errorT', 'Get current temperature', e);
             throw this.serviceCommunicationError;
         }, function_1.identity))();
+    }
+    async handleSetTempGet(asset) {
+        const determineSetTemp = (0, function_1.flow)(A.findFirst(({ featureName, instance }) => featureName === 'range' && asset.instance === instance), O.flatMap(({ value }) => typeof value === 'number'
+            ? tempMapper.mapAlexaTempToHomeKit({ value, scale: 'FAHRENHEIT' })
+            : O.none), O.tap((s) => O.of(this.logWithContext('debug', `Get set temperature result: ${s} Celsius`))));
+        return (0, function_1.pipe)(this.getStateGraphQl(determineSetTemp), TE.match((e) => {
+            this.logWithContext('errorT', 'Get set temperature', e);
+            throw this.serviceCommunicationError;
+        }, function_1.identity))();
+    }
+    async handleSetTempSet(asset, value) {
+        this.logWithContext('debug', `Triggered set temperature: ${value}`);
+        if (typeof value !== 'number') {
+            throw this.invalidValueError;
+        }
+        const fahrenheit = tempMapper.mapHomeKitTempToAlexa(value, 'FAHRENHEIT');
+        return (0, function_1.pipe)(this.platform.alexaApi.setDeviceStateGraphQl(this.device.endpointId, 'range', 'setRangeValue', { rangeValue: fahrenheit }, asset.instance), TE.match((e) => {
+            this.logWithContext('errorT', 'Set temperature', e);
+            throw this.serviceCommunicationError;
+        }, () => {
+            this.updateCacheValue({
+                value: fahrenheit,
+                featureName: 'range',
+                instance: asset.instance,
+            });
+        }))();
+    }
+    async handleAutoModeGet() {
+        const determineToggleState = (0, function_1.flow)(A.findFirst(({ featureName }) => featureName === 'toggle'), O.tap(({ value }) => O.of(this.logWithContext('debug', `Get auto mode result: ${value}`))), O.map(({ value }) => value === 'ON'));
+        return (0, function_1.pipe)(this.getStateGraphQl(determineToggleState), TE.match((e) => {
+            this.logWithContext('errorT', 'Get auto mode', e);
+            throw this.serviceCommunicationError;
+        }, function_1.identity))();
+    }
+    async handleAutoModeSet(value) {
+        this.logWithContext('debug', `Triggered set auto mode: ${value}`);
+        if (typeof value !== 'boolean') {
+            throw this.invalidValueError;
+        }
+        const action = value ? 'turnOn' : 'turnOff';
+        return (0, function_1.pipe)(this.platform.alexaApi.setDeviceStateGraphQl(this.device.endpointId, 'toggle', action, {}, '4'), TE.match((e) => {
+            this.logWithContext('errorT', 'Set auto mode', e);
+            throw this.serviceCommunicationError;
+        }, () => {
+            this.updateCacheValue({
+                value: value ? 'ON' : 'OFF',
+                featureName: 'toggle',
+            });
+        }))();
     }
 }
 exports.default = FanAccessory;

@@ -43,41 +43,30 @@
 
 ---
 
-## Direction Control - Updated Analysis
+## Direction Control — Investigation Complete (4/13/2026)
 
-The direction change does not appear in the polled state. There are two candidate explanations.
+**Result: Direction control is NOT available through the Alexa Smart Home API.**
 
-### Candidate A: Second `turnOn`/`turnOff` Pair in supportedOperations
+### Investigation Summary
 
-The `supportedOperations` array contains two `turnOn` and two `turnOff` entries:
+1. **Candidate A (sub-endpoint):** Ruled out. The duplicate `turnOn`/`turnOff` in `supportedOperations` belongs to the toggle feature (instance 4), not a sub-endpoint. No sub-endpoints, associations, or relationships exist on this device — the GraphQL API does not expose them, and the `associations`/`connectedVia` fields are not valid in Amazon's schema.
 
-```json
-"supportedOperations": [
-  "turnOn",
-  "turnOff",
-  "setRangeValue",
-  "adjustRangeValue",
-  "turnOn",
-  "turnOff"
-]
-```
+2. **Candidate B (toggle is direction):** Ruled out. Sending `turnOn` to toggle instance 4 activates **Auto mode** (fan runs to set temperature), not direction. Toggle state remains OFF after direction changes via the Alexa app.
 
-The first pair controls main power. The second pair is a sub-endpoint and is the most likely candidate for direction control. In the Alexa Smart Home API, sub-endpoint operations are sent to a child endpoint ID that is derived from the primary endpoint ID. The plugin's current state query may not be returning the sub-endpoint's state, which would explain why direction does not appear in the state array.
+3. **Mode features (instances 1, 2):** Two `mode` features exist on the device but return `null` for properties, configuration, and operations. The GraphQL API does not expose them for reading or writing. They are likely internal device features (possibly fan speed and direction) that are only accessible via the Alexa app's device-specific UI or the physical buttons.
 
-**Action item:** Inspect the raw API response from `alexa-remote2` before it is parsed by the plugin. Look for a `relationships` or `subEndpoints` array on the device object, or a separate endpoint ID associated with the second `turnOn`/`turnOff` pair. Enable maximum debug logging and search for the full unfiltered device object.
+### What the Toggle Actually Is
 
-### Candidate B: Toggle Is Direction, State Is Not Refreshing
+| Feature | Instance | Function | Confirmed |
+|---|---|---|---|
+| `toggle` / `toggleState` | `4` | **Auto mode** — fan runs to set temperature | Yes (tested via API 4/13/2026) |
 
-Less likely given that the air temperature did update. However, it is worth forcing a cache flush and re-polling before ruling this out. Delete the plugin's persisted state file and restart Homebridge, then re-check.
+### Direction Control — Remaining Options
 
-### What the Toggle Likely Is
-
-Given that it is not direction, `toggleState` is most likely one of:
-- Auto mode on/off (fan runs to setpoint vs. constant speed)
-- A sleep/timer mode
-- An ionizer or air quality feature (some Vornado models have this)
-
-The toggle value has been `OFF` in both observations. Try toggling it explicitly from the Alexa app using a routine or the device controls and observe whether the state response changes.
+If direction control becomes critical in the future:
+- The Alexa app may use a different REST API (not the smart home GraphQL endpoint) to control mode features. Intercepting the app's API calls via a proxy could reveal the endpoint.
+- The `alexa-remote2` library's `executeSmarthomeDeviceAction` REST method could be explored, though mode features having no operations makes this unlikely to work.
+- For now, direction must be changed via the Alexa app or the physical button on the fan.
 
 ---
 
@@ -88,8 +77,10 @@ The toggle value has been `OFF` in both observations. Try toggling it explicitly
 | `power` / `powerState` | - | R/W | Yes | Fan power on/off |
 | `range` / `rangeValue` | `3` | R/W | Yes | Target temperature setpoint (°F) |
 | `range` / `rangeValue` | `5` | Read-only | Yes | Ambient air temperature sensor (°F) |
-| `toggle` / `toggleState` | - | R/W | Partial | Unknown - NOT direction |
-| Direction (exhaust/intake) | - | R/W | Not found yet | Likely sub-endpoint `turnOn`/`turnOff` |
+| `toggle` / `toggleState` | `4` | R/W | Yes | **Auto mode** — fan runs to set temperature |
+| `mode` | `1` | N/A | Yes | Not accessible via API (null properties/operations) |
+| `mode` | `2` | N/A | Yes | Not accessible via API (null properties/operations) |
+| Direction (exhaust/intake) | - | N/A | Confirmed absent | Not exposed through Smart Home API |
 
 ---
 
@@ -139,17 +130,17 @@ async getCurrentTemperature(): Promise<CharacteristicValue> {
 
 HomeKit always uses Celsius internally. The conversion is required regardless of user display settings.
 
-### Phase 2 - Direction Toggle (Blocked Pending Sub-Endpoint Discovery)
+### Phase 2 - Direction Toggle — CANCELLED
 
-Hold until the sub-endpoint ID for the second `turnOn`/`turnOff` pair is confirmed. Once confirmed, the implementation will wire a HomeKit `Switch` service (named `"Exhaust Mode"`) or `SwingMode` to that sub-endpoint.
+Direction control is not available through the Alexa Smart Home API. See investigation results above.
 
-### Phase 3 - Temperature Setpoint (Blocked Pending Valid Range Confirmation)
+### Phase 3 - Temperature Setpoint (Ready to Implement)
 
-Expose `Set Temperature` (range instance 3) as a writable control. Requires determining the valid min/max range and choosing the HomeKit service model. Do not implement until Phase 1 is tested.
+Expose `Set Temperature` (range instance 3) as a writable control via a `Thermostat` service or a custom characteristic on the fan accessory. The valid min/max range should be determined empirically or set to a safe default (e.g. 60–90°F). Uses `setRangeValue` operation with instance `3`.
 
-### Phase 4 - Toggle Characteristic (Blocked Pending Identity Confirmation)
+### Phase 4 - Auto Mode Toggle (Ready to Implement)
 
-Once the toggle's actual function is confirmed, wire it to an appropriate HomeKit characteristic. If it is auto mode, a `Switch` service labeled `"Auto Mode"` is appropriate.
+Wire toggle instance 4 to a HomeKit `Switch` service labeled `"Auto Mode"`. Sends `turnOn`/`turnOff` to toggle feature with instance `4`. State reads from `toggleState` value.
 
 ---
 
