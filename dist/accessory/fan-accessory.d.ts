@@ -7,8 +7,10 @@ export default class FanAccessory extends BaseAccessory {
     service: Service;
     isExternalAccessory: boolean;
     private heaterCoolerService?;
+    private directionService?;
     private airTempAsset?;
     private setTempAsset?;
+    private isExhaust;
     configureServices(): void;
     handleActiveGet(): Promise<boolean>;
     handleActiveSet(value: CharacteristicValue): Promise<void>;
@@ -18,5 +20,6 @@ export default class FanAccessory extends BaseAccessory {
     handleAutoModeGet(): Promise<number>;
     handleAutoModeSet(value: CharacteristicValue): Promise<void>;
     handleCurrentHeaterCoolerStateGet(): Promise<number>;
+    handleDirectionSet(value: CharacteristicValue): Promise<void>;
 }
 //# sourceMappingURL=fan-accessory.d.ts.map

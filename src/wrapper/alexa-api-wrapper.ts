@@ -292,6 +292,36 @@ export class AlexaApiWrapper {
     );
   }
 
+  sendTextCommand(text: string): TaskEither<AlexaApiError, void> {
+    const serials = this.alexaRemote.serialNumbers;
+    const firstSerial = Object.keys(serials)[0];
+    if (!firstSerial) {
+      return TE.left(
+        new HttpError('No Alexa device found to route text command through'),
+      );
+    }
+    return pipe(
+      TE.tryCatch(
+        () =>
+          AlexaApiWrapper.toPromise<void>((cb) =>
+            this.alexaRemote.sendSequenceCommand(
+              firstSerial,
+              'textCommand',
+              text,
+              cb,
+            ),
+          ),
+        (reason) =>
+          new HttpError(
+            `Error sending text command. Reason: ${
+              (reason as Error).message
+            }`,
+          ),
+      ),
+      TE.map(constVoid),
+    );
+  }
+
   private changeDeviceState(
     entityId: string,
     parameters: Record<string, string>,

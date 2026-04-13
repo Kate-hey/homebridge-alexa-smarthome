@@ -39,6 +39,7 @@ class FanAccessory extends base_accessory_1.default {
     constructor() {
         super(...arguments);
         this.isExternalAccessory = false;
+        this.isExhaust = false;
     }
     configureServices() {
         this.service =
@@ -52,10 +53,10 @@ class FanAccessory extends base_accessory_1.default {
         if (this.service.testCharacteristic(this.Characteristic.RotationSpeed)) {
             this.service.removeCharacteristic(this.service.getCharacteristic(this.Characteristic.RotationSpeed));
         }
-        // Remove stale Switch service (old Auto Mode) if present
-        const staleSwitch = this.platformAcc.getService(this.Service.Switch);
-        if (staleSwitch) {
-            this.platformAcc.removeService(staleSwitch);
+        // Remove stale Switch service (old Auto Mode) if present — but keep direction switch
+        const staleSwitches = this.platformAcc.services.filter((s) => s.UUID === this.Service.Switch.UUID && s.subtype !== 'exhaust-mode');
+        for (const s of staleSwitches) {
+            this.platformAcc.removeService(s);
         }
         // Remove stale TemperatureSensor service if present (now part of HeaterCooler)
         const staleTempSensor = this.platformAcc.getService(this.Service.TemperatureSensor);
@@ -88,9 +89,7 @@ class FanAccessory extends base_accessory_1.default {
             this.heaterCoolerService
                 .getCharacteristic(this.Characteristic.TargetHeaterCoolerState)
                 .setProps({
-                validValues: [
-                    this.Characteristic.TargetHeaterCoolerState.COOL,
-                ],
+                validValues: [this.Characteristic.TargetHeaterCoolerState.COOL],
             })
                 .onGet(() => this.Characteristic.TargetHeaterCoolerState.COOL)
                 .onSet(() => { });
@@ -116,6 +115,14 @@ class FanAccessory extends base_accessory_1.default {
                 throw this.readOnlyError;
             });
         }
+        // Direction control via Alexa text command (exhaust mode switch)
+        this.directionService =
+            this.platformAcc.getServiceById(this.Service.Switch, 'exhaust-mode') ||
+                this.platformAcc.addService(this.Service.Switch, 'Exhaust Mode', 'exhaust-mode');
+        this.directionService
+            .getCharacteristic(this.Characteristic.On)
+            .onGet(() => this.isExhaust)
+            .onSet(this.handleDirectionSet.bind(this));
     }
     async handleActiveGet() {
         const determinePowerState = (0, function_1.flow)(A.findFirst(({ featureName }) => featureName === 'power'), O.tap(({ value }) => O.of(this.logWithContext('debug', `Get power result: ${value}`))), O.map(({ value }) => value === 'ON'));
@@ -208,6 +215,18 @@ class FanAccessory extends base_accessory_1.default {
             this.logWithContext('errorT', 'Get heater cooler state', e);
             throw this.serviceCommunicationError;
         }, function_1.identity))();
+    }
+    async handleDirectionSet(value) {
+        const exhaust = value === true || value === 1;
+        const direction = exhaust ? 'exhaust' : 'direct';
+        this.logWithContext('debug', `Triggered set direction: ${direction}`);
+        const command = `change ${this.device.displayName} direction to ${direction}`;
+        return (0, function_1.pipe)(this.platform.alexaApi.sendTextCommand(command), TE.match((e) => {
+            this.logWithContext('errorT', 'Set direction', e);
+            throw this.serviceCommunicationError;
+        }, () => {
+            this.isExhaust = exhaust;
+        }))();
     }
 }
 exports.default = FanAccessory;

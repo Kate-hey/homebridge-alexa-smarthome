@@ -125,6 +125,14 @@ class AlexaApiWrapper {
         };
         return AlexaApiWrapper.toPromise((cb) => this.alexaRemote.httpsGet(false, '/nexus/v1/graphql', cb, flags));
     }
+    sendTextCommand(text) {
+        const serials = this.alexaRemote.serialNumbers;
+        const firstSerial = Object.keys(serials)[0];
+        if (!firstSerial) {
+            return TE.left(new errors_1.HttpError('No Alexa device found to route text command through'));
+        }
+        return (0, function_1.pipe)(TE.tryCatch(() => AlexaApiWrapper.toPromise((cb) => this.alexaRemote.sendSequenceCommand(firstSerial, 'textCommand', text, cb)), (reason) => new errors_1.HttpError(`Error sending text command. Reason: ${reason.message}`)), TE.map(function_1.constVoid));
+    }
     changeDeviceState(entityId, parameters, entityType = 'APPLIANCE') {
         return AlexaApiWrapper.toPromise(this.alexaRemote.executeSmarthomeDeviceAction.bind(this.alexaRemote, [entityId], 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

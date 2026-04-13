@@ -23,6 +23,7 @@ export declare class AlexaApiWrapper {
     setDeviceStateGraphQl(endpointId: string, featureName: SupportedFeatures, featureOperationName: SupportedActionsType, payload?: Record<string, unknown>, instance?: string): TaskEither<AlexaApiError, void>;
     setDeviceState(deviceId: string, action: SupportedActionsType, parameters?: Record<string, string>, entityType?: EntityType): TaskEither<AlexaApiError, void>;
     private executeGraphQlQuery;
+    sendTextCommand(text: string): TaskEither<AlexaApiError, void>;
     private changeDeviceState;
     private static toPromise;
     private queryDeviceStates;

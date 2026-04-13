@@ -16,8 +16,10 @@ export default class FanAccessory extends BaseAccessory {
   service: Service;
   isExternalAccessory = false;
   private heaterCoolerService?: Service;
+  private directionService?: Service;
   private airTempAsset?: RangeFeature;
   private setTempAsset?: RangeFeature;
+  private isExhaust = false;
 
   configureServices() {
     this.service =
@@ -36,10 +38,13 @@ export default class FanAccessory extends BaseAccessory {
       );
     }
 
-    // Remove stale Switch service (old Auto Mode) if present
-    const staleSwitch = this.platformAcc.getService(this.Service.Switch);
-    if (staleSwitch) {
-      this.platformAcc.removeService(staleSwitch);
+    // Remove stale Switch service (old Auto Mode) if present — but keep direction switch
+    const staleSwitches = this.platformAcc.services.filter(
+      (s) =>
+        s.UUID === this.Service.Switch.UUID && s.subtype !== 'exhaust-mode',
+    );
+    for (const s of staleSwitches) {
+      this.platformAcc.removeService(s);
     }
 
     // Remove stale TemperatureSensor service if present (now part of HeaterCooler)
@@ -90,9 +95,7 @@ export default class FanAccessory extends BaseAccessory {
       this.heaterCoolerService
         .getCharacteristic(this.Characteristic.TargetHeaterCoolerState)
         .setProps({
-          validValues: [
-            this.Characteristic.TargetHeaterCoolerState.COOL,
-          ],
+          validValues: [this.Characteristic.TargetHeaterCoolerState.COOL],
         })
         .onGet(() => this.Characteristic.TargetHeaterCoolerState.COOL)
         .onSet(() => {});
@@ -116,13 +119,24 @@ export default class FanAccessory extends BaseAccessory {
       // TemperatureDisplayUnits — Fahrenheit (read-only)
       this.heaterCoolerService
         .getCharacteristic(this.Characteristic.TemperatureDisplayUnits)
-        .onGet(
-          () => this.Characteristic.TemperatureDisplayUnits.FAHRENHEIT,
-        )
+        .onGet(() => this.Characteristic.TemperatureDisplayUnits.FAHRENHEIT)
         .onSet(() => {
           throw this.readOnlyError;
         });
     }
+
+    // Direction control via Alexa text command (exhaust mode switch)
+    this.directionService =
+      this.platformAcc.getServiceById(this.Service.Switch, 'exhaust-mode') ||
+      this.platformAcc.addService(
+        this.Service.Switch,
+        'Exhaust Mode',
+        'exhaust-mode',
+      );
+    this.directionService
+      .getCharacteristic(this.Characteristic.On)
+      .onGet(() => this.isExhaust)
+      .onSet(this.handleDirectionSet.bind(this));
   }
 
   async handleActiveGet(): Promise<boolean> {
@@ -310,8 +324,7 @@ export default class FanAccessory extends BaseAccessory {
         },
         () => {
           this.updateCacheValue({
-            value:
-              value === this.Characteristic.Active.ACTIVE ? 'ON' : 'OFF',
+            value: value === this.Characteristic.Active.ACTIVE ? 'ON' : 'OFF',
             featureName: 'toggle',
           });
         },
@@ -335,6 +348,28 @@ export default class FanAccessory extends BaseAccessory {
         this.logWithContext('errorT', 'Get heater cooler state', e);
         throw this.serviceCommunicationError;
       }, identity),
+    )();
+  }
+
+  async handleDirectionSet(value: CharacteristicValue): Promise<void> {
+    const exhaust = value === true || value === 1;
+    const direction = exhaust ? 'exhaust' : 'direct';
+    this.logWithContext(
+      'debug',
+      `Triggered set direction: ${direction}`,
+    );
+    const command = `change ${this.device.displayName} direction to ${direction}`;
+    return pipe(
+      this.platform.alexaApi.sendTextCommand(command),
+      TE.match(
+        (e) => {
+          this.logWithContext('errorT', 'Set direction', e);
+          throw this.serviceCommunicationError;
+        },
+        () => {
+          this.isExhaust = exhaust;
+        },
+      ),
     )();
   }
 }
