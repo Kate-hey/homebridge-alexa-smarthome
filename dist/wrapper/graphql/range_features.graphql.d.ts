@@ -1,0 +1,2 @@
+export declare const RangeQuery = "query getRangeStates(\n  $endpointId: String!\n) {\n  endpoint(id: $endpointId) {\n    features {\n      name\n      instance\n      properties {\n        name\n        ... on RangeValue {\n          rangeValue {\n            value\n          }\n        }\n      }\n      configuration {\n        ... on RangeConfiguration {\n          friendlyName {\n            value {\n              text\n            }\n          }\n        }\n      }\n    }\n  }\n}";
+//# sourceMappingURL=range_features.graphql.d.ts.map

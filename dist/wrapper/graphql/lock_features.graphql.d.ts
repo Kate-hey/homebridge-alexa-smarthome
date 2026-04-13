@@ -1,0 +1,2 @@
+export declare const LockQuery = "query getLockState(\n  $endpointId: String!\n) {\n  endpoint(id: $endpointId) {\n    features {\n      name\n      __typename\n      properties {\n        name\n        ... on Lock {\n          lockState\n        }\n      }\n    }\n    __typename\n  }\n}";
+//# sourceMappingURL=lock_features.graphql.d.ts.map

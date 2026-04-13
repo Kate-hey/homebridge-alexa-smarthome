@@ -1,0 +1,1 @@
+{"version":3,"file":"fan-mapper.d.ts","sourceRoot":"","sources":["../../src/mapper/fan-mapper.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,cAAc,EAAE,MAAM,YAAY,CAAC;AAEjD,OAAO,EAAE,eAAe,EAAwB,MAAM,iBAAiB,CAAC;AAGxE,eAAO,MAAM,4BAA4B,UAChC,eAAe,CAAC,OAAO,CAAC,kBACf,qBAAqB,yKAIJ,CAAC;AAEpC,eAAO,MAAM,2BAA2B,UAC/B,eAAe,CAAC,OAAO,CAAC,kBACf,qBAAqB,WAIR,CAAC"}

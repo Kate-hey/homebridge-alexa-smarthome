@@ -1,0 +1,2 @@
+export declare const PowerQuery = "query getPowerState(\n  $endpointId: String!\n) {\n  endpoint(id: $endpointId) {\n    features {\n      name\n      properties {\n        name\n        ... on Power {\n          powerStateValue\n        }\n      }\n    }\n  }\n}";
+//# sourceMappingURL=power_features.graphql.d.ts.map

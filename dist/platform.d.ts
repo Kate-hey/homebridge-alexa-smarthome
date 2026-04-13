@@ -1,0 +1,41 @@
+import AlexaRemote from 'alexa-remote2';
+import { IOEither } from 'fp-ts/IOEither';
+import { Option } from 'fp-ts/Option';
+import * as TE from 'fp-ts/TaskEither';
+import { API, Characteristic, DynamicPlatformPlugin, Logger, PlatformAccessory, PlatformConfig, Service } from 'homebridge';
+import BaseAccessory from './accessory/base-accessory';
+import { AlexaDeviceError, AlexaError } from './domain/alexa/errors';
+import { SmartHomeDevice } from './domain/alexa/get-devices';
+import { AlexaPlatformConfig } from './domain/homebridge';
+import DeviceStore from './store/device-store';
+import { PluginLogger } from './util/plugin-logger';
+import { AlexaApiWrapper } from './wrapper/alexa-api-wrapper';
+export declare class AlexaSmartHomePlatform implements DynamicPlatformPlugin {
+    readonly logger: Logger;
+    readonly api: API;
+    readonly HAP: API['hap'];
+    readonly Service: typeof Service;
+    readonly Characteristic: typeof Characteristic;
+    readonly log: PluginLogger;
+    readonly config: AlexaPlatformConfig;
+    readonly alexaRemote: AlexaRemote;
+    readonly alexaApi: AlexaApiWrapper;
+    readonly deviceStore: DeviceStore;
+    cachedAccessories: PlatformAccessory[];
+    accessoryHandlers: BaseAccessory[];
+    activeDeviceIds: string[];
+    private readonly cookiePersistPath;
+    constructor(logger: Logger, config: PlatformConfig, api: API);
+    configureAccessory(accessory: PlatformAccessory): void;
+    initAlexaRemote(callback: (error: Option<Error>) => void, firstAttempt?: boolean): void;
+    findDevices(): TE.TaskEither<AlexaError, SmartHomeDevice[]>;
+    initDevices(devices: SmartHomeDevice[]): TE.TaskEither<AlexaError | void, BaseAccessory[]>;
+    initAccessories(device: SmartHomeDevice): IOEither<AlexaDeviceError, BaseAccessory[]>;
+    private restoreExistingAccessory;
+    private addNewAccessory;
+    private findStaleAccessories;
+    private unregisterStaleAccessories;
+    private logDeviceInfo;
+    private alexaRemoteLogger;
+}
+//# sourceMappingURL=platform.d.ts.map

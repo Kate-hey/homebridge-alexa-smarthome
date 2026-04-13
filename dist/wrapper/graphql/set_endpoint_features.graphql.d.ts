@@ -1,0 +1,2 @@
+export declare const SetEndpointFeatures = "mutation updatePowerFeatureForEndpoints($featureControlRequests: [FeatureControlRequest!]!) {\n  setEndpointFeatures(\n    setEndpointFeaturesInput: {\n      featureControlRequests: $featureControlRequests\n    }\n  ) {\n    featureControlResponses {\n      endpointId\n      featureOperationName\n      __typename\n    }\n    errors {\n      endpointId\n      code\n      __typename\n    }\n    __typename\n  }\n}";
+//# sourceMappingURL=set_endpoint_features.graphql.d.ts.map

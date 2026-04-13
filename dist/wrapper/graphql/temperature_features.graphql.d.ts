@@ -1,0 +1,2 @@
+export declare const TempSensorQuery = "query getTemperatureStates(\n  $endpointId: String!\n) {\n  endpoint(id: $endpointId) {\n    features {\n      name\n      properties {\n        name\n        ... on TemperatureSensor {\n          value {\n            value\n            scale\n          }\n        }\n      }\n    }\n  }\n}";
+//# sourceMappingURL=temperature_features.graphql.d.ts.map
