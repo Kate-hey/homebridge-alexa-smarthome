@@ -59,6 +59,13 @@ class AlexaApiWrapper {
                     reporter.id ===
                         'amzn1.ask.skill.2af008bb-2bb0-4bef-b131-e191f944a87e');
         });
+        // One-time introspection to discover available types for mode/toggle features
+        this.executeGraphQlQuery(`{ __type(name: "EndpointFeatureProperty") { possibleTypes { name } } }`)
+            .then((res) => this.log.info(`INTROSPECTION EndpointFeatureProperty: ${JSON.stringify(res, undefined, 2)}`)())
+            .catch(() => { });
+        this.executeGraphQlQuery(`{ __type(name: "EndpointFeatureConfiguration") { possibleTypes { name } } }`)
+            .then((res) => this.log.info(`INTROSPECTION EndpointFeatureConfiguration: ${JSON.stringify(res, undefined, 2)}`)())
+            .catch(() => { });
         return (0, function_1.pipe)(TE.tryCatch(() => this.executeGraphQlQuery(graphql_1.EndpointsQuery), (reason) => new errors_1.HttpError(`Error getting smart home devices. Reason: ${reason.message}`)), TE.tap((raw) => {
             var _a, _b;
             const items = (_b = (_a = raw === null || raw === void 0 ? void 0 : raw.data) === null || _a === void 0 ? void 0 : _a.endpoints) === null || _b === void 0 ? void 0 : _b.items;

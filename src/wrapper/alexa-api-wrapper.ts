@@ -80,6 +80,27 @@ export class AlexaApiWrapper {
             reporter.id ===
               'amzn1.ask.skill.2af008bb-2bb0-4bef-b131-e191f944a87e'),
       );
+    // One-time introspection to discover available types for mode/toggle features
+    this.executeGraphQlQuery<Record<string, unknown>>(
+      `{ __type(name: "EndpointFeatureProperty") { possibleTypes { name } } }`,
+    )
+      .then((res) =>
+        this.log.info(
+          `INTROSPECTION EndpointFeatureProperty: ${JSON.stringify(res, undefined, 2)}`,
+        )(),
+      )
+      .catch(() => {});
+
+    this.executeGraphQlQuery<Record<string, unknown>>(
+      `{ __type(name: "EndpointFeatureConfiguration") { possibleTypes { name } } }`,
+    )
+      .then((res) =>
+        this.log.info(
+          `INTROSPECTION EndpointFeatureConfiguration: ${JSON.stringify(res, undefined, 2)}`,
+        )(),
+      )
+      .catch(() => {});
+
     return pipe(
       TE.tryCatch(
         () =>
