@@ -1,17 +1,21 @@
 import * as A from 'fp-ts/Array';
 import * as O from 'fp-ts/Option';
+import * as RR from 'fp-ts/ReadonlyRecord';
 import * as TE from 'fp-ts/TaskEither';
 import { flow, identity, pipe } from 'fp-ts/lib/function';
 import { CharacteristicValue, Service } from 'homebridge';
 import { SupportedActionsType } from '../domain/alexa';
-import { FanState } from '../domain/alexa/fan';
+import { FanRangeFeatures, FanState } from '../domain/alexa/fan';
+import { RangeFeature } from '../domain/alexa/save-device-capabilities';
 import * as mapper from '../mapper/fan-mapper';
+import * as tempMapper from '../mapper/temperature-mapper';
 import BaseAccessory from './base-accessory';
 
 export default class FanAccessory extends BaseAccessory {
   static requiredOperations: SupportedActionsType[] = ['turnOn', 'turnOff'];
   service: Service;
   isExternalAccessory = false;
+  private tempSensorService?: Service;
 
   configureServices() {
     this.service =
@@ -22,6 +26,22 @@ export default class FanAccessory extends BaseAccessory {
       .getCharacteristic(this.Characteristic.Active)
       .onGet(this.handleActiveGet.bind(this))
       .onSet(this.handleActiveSet.bind(this));
+
+    pipe(
+      this.rangeFeatures,
+      RR.lookup(FanRangeFeatures.airTemperature),
+      O.map((asset) => {
+        this.tempSensorService =
+          this.platformAcc.getService(this.Service.TemperatureSensor) ||
+          this.platformAcc.addService(
+            this.Service.TemperatureSensor,
+            FanRangeFeatures.airTemperature,
+          );
+        this.tempSensorService
+          .getCharacteristic(this.Characteristic.CurrentTemperature)
+          .onGet(this.handleCurrentTempGet.bind(this, asset));
+      }),
+    );
   }
 
   async handleActiveGet(): Promise<boolean> {
@@ -72,6 +92,33 @@ export default class FanAccessory extends BaseAccessory {
           });
         },
       ),
+    )();
+  }
+
+  async handleCurrentTempGet(asset: RangeFeature): Promise<number> {
+    const determineCurrentTemp = flow(
+      A.findFirst<FanState>(
+        ({ featureName, instance }) =>
+          featureName === 'range' && asset.instance === instance,
+      ),
+      O.flatMap(({ value }) =>
+        typeof value === 'number'
+          ? tempMapper.mapAlexaTempToHomeKit({ value, scale: 'FAHRENHEIT' })
+          : O.none,
+      ),
+      O.tap((s) =>
+        O.of(
+          this.logWithContext('debug', `Get current temperature result: ${s}`),
+        ),
+      ),
+    );
+
+    return pipe(
+      this.getStateGraphQl(determineCurrentTemp),
+      TE.match((e) => {
+        this.logWithContext('errorT', 'Get current temperature', e);
+        throw this.serviceCommunicationError;
+      }, identity),
     )();
   }
 }

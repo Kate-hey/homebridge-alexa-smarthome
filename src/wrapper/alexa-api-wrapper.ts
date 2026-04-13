@@ -39,6 +39,7 @@ import { PluginLogger } from '../util/plugin-logger';
 import {
   AirQualityQuery,
   EndpointsQuery,
+  FanQuery,
   LightQuery,
   LockQuery,
   PowerQuery,
@@ -130,6 +131,7 @@ export class AlexaApiWrapper {
     const {
       AirQualitySensor,
       CarbonMonoxideSensor,
+      Fanv2,
       HumiditySensor,
       Lightbulb,
       LockMechanism,
@@ -149,6 +151,7 @@ export class AlexaApiWrapper {
               TE.of(
                 match(service.UUID)
                   .with(AirQualitySensor.UUID, constant(AirQualityQuery))
+                  .with(Fanv2.UUID, constant(FanQuery))
                   .with(Lightbulb.UUID, constant(LightQuery))
                   .with(LockMechanism.UUID, constant(LockQuery))
                   .with(TemperatureSensor.UUID, constant(TempSensorQuery))
