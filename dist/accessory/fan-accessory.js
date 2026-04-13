@@ -48,37 +48,73 @@ class FanAccessory extends base_accessory_1.default {
             .getCharacteristic(this.Characteristic.Active)
             .onGet(this.handleActiveGet.bind(this))
             .onSet(this.handleActiveSet.bind(this));
-        // Phase 1: Ambient temperature sensor (read-only, range instance 5)
-        (0, function_1.pipe)(this.rangeFeatures, RR.lookup(fan_1.FanRangeFeatures.airTemperature), O.map((asset) => {
-            this.tempSensorService =
-                this.platformAcc.getService(this.Service.TemperatureSensor) ||
-                    this.platformAcc.addService(this.Service.TemperatureSensor, fan_1.FanRangeFeatures.airTemperature);
-            this.tempSensorService
-                .getCharacteristic(this.Characteristic.CurrentTemperature)
-                .onGet(this.handleCurrentTempGet.bind(this, asset));
-        }));
-        // Phase 3: Temperature setpoint (writable, range instance 3)
-        (0, function_1.pipe)(this.rangeFeatures, RR.lookup(fan_1.FanRangeFeatures.setTemperature), O.map((asset) => {
-            this.setTempAsset = asset;
-            this.service
-                .getCharacteristic(this.Characteristic.RotationSpeed)
-                .setProps({ minValue: 15, maxValue: 32, minStep: 1 })
-                .onGet(this.handleSetTempGet.bind(this, asset))
-                .onSet(this.handleSetTempSet.bind(this, asset));
-        }));
-        // Phase 4: Auto mode toggle (instance 4)
-        if (this.device.supportedOperations.includes('turnOn') &&
-            this.device.supportedOperations.includes('turnOff')) {
-            const cachedToggle = this.getCacheValue('toggle');
-            if (O.isSome(cachedToggle)) {
-                this.autoModeService =
-                    this.platformAcc.getService(this.Service.Switch) ||
-                        this.platformAcc.addService(this.Service.Switch, 'Auto Mode', 'auto-mode');
-                this.autoModeService
-                    .getCharacteristic(this.Characteristic.On)
-                    .onGet(this.handleAutoModeGet.bind(this))
-                    .onSet(this.handleAutoModeSet.bind(this));
+        // Remove stale RotationSpeed characteristic if present from previous version
+        if (this.service.testCharacteristic(this.Characteristic.RotationSpeed)) {
+            this.service.removeCharacteristic(this.service.getCharacteristic(this.Characteristic.RotationSpeed));
+        }
+        // Remove stale Switch service (old Auto Mode) if present
+        const staleSwitch = this.platformAcc.getService(this.Service.Switch);
+        if (staleSwitch) {
+            this.platformAcc.removeService(staleSwitch);
+        }
+        // Remove stale TemperatureSensor service if present (now part of HeaterCooler)
+        const staleTempSensor = this.platformAcc.getService(this.Service.TemperatureSensor);
+        if (staleTempSensor) {
+            this.platformAcc.removeService(staleTempSensor);
+        }
+        // Look up range features for temperature
+        const maybeAirTemp = (0, function_1.pipe)(this.rangeFeatures, RR.lookup(fan_1.FanRangeFeatures.airTemperature));
+        const maybeSetTemp = (0, function_1.pipe)(this.rangeFeatures, RR.lookup(fan_1.FanRangeFeatures.setTemperature));
+        if (O.isSome(maybeAirTemp) || O.isSome(maybeSetTemp)) {
+            this.airTempAsset = O.isSome(maybeAirTemp)
+                ? maybeAirTemp.value
+                : undefined;
+            this.setTempAsset = O.isSome(maybeSetTemp)
+                ? maybeSetTemp.value
+                : undefined;
+            this.heaterCoolerService =
+                this.platformAcc.getService(this.Service.HeaterCooler) ||
+                    this.platformAcc.addService(this.Service.HeaterCooler, 'Temperature Control');
+            // Active — maps to Auto Mode toggle (instance 4)
+            this.heaterCoolerService
+                .getCharacteristic(this.Characteristic.Active)
+                .onGet(this.handleAutoModeGet.bind(this))
+                .onSet(this.handleAutoModeSet.bind(this));
+            // CurrentHeaterCoolerState — read-only, COOLING when auto on, INACTIVE when off
+            this.heaterCoolerService
+                .getCharacteristic(this.Characteristic.CurrentHeaterCoolerState)
+                .onGet(this.handleCurrentHeaterCoolerStateGet.bind(this));
+            // TargetHeaterCoolerState — locked to COOL
+            this.heaterCoolerService
+                .getCharacteristic(this.Characteristic.TargetHeaterCoolerState)
+                .setProps({
+                validValues: [
+                    this.Characteristic.TargetHeaterCoolerState.COOL,
+                ],
+            })
+                .onGet(() => this.Characteristic.TargetHeaterCoolerState.COOL)
+                .onSet(() => { });
+            // CurrentTemperature — ambient air temperature (instance 5)
+            if (this.airTempAsset) {
+                this.heaterCoolerService
+                    .getCharacteristic(this.Characteristic.CurrentTemperature)
+                    .onGet(this.handleCurrentTempGet.bind(this, this.airTempAsset));
             }
+            // CoolingThresholdTemperature — set temperature (instance 3)
+            if (this.setTempAsset) {
+                this.heaterCoolerService
+                    .getCharacteristic(this.Characteristic.CoolingThresholdTemperature)
+                    .setProps({ minValue: 15, maxValue: 33, minStep: 0.5 })
+                    .onGet(this.handleSetTempGet.bind(this, this.setTempAsset))
+                    .onSet(this.handleSetTempSet.bind(this, this.setTempAsset));
+            }
+            // TemperatureDisplayUnits — Fahrenheit (read-only)
+            this.heaterCoolerService
+                .getCharacteristic(this.Characteristic.TemperatureDisplayUnits)
+                .onGet(() => this.Characteristic.TemperatureDisplayUnits.FAHRENHEIT)
+                .onSet(() => {
+                throw this.readOnlyError;
+            });
         }
     }
     async handleActiveGet() {
@@ -140,7 +176,9 @@ class FanAccessory extends base_accessory_1.default {
         }))();
     }
     async handleAutoModeGet() {
-        const determineToggleState = (0, function_1.flow)(A.findFirst(({ featureName }) => featureName === 'toggle'), O.tap(({ value }) => O.of(this.logWithContext('debug', `Get auto mode result: ${value}`))), O.map(({ value }) => value === 'ON'));
+        const determineToggleState = (0, function_1.flow)(A.findFirst(({ featureName }) => featureName === 'toggle'), O.tap(({ value }) => O.of(this.logWithContext('debug', `Get auto mode result: ${value}`))), O.map(({ value }) => value === 'ON'
+            ? this.Characteristic.Active.ACTIVE
+            : this.Characteristic.Active.INACTIVE));
         return (0, function_1.pipe)(this.getStateGraphQl(determineToggleState), TE.match((e) => {
             this.logWithContext('errorT', 'Get auto mode', e);
             throw this.serviceCommunicationError;
@@ -148,19 +186,28 @@ class FanAccessory extends base_accessory_1.default {
     }
     async handleAutoModeSet(value) {
         this.logWithContext('debug', `Triggered set auto mode: ${value}`);
-        if (typeof value !== 'boolean') {
+        if (typeof value !== 'number') {
             throw this.invalidValueError;
         }
-        const action = value ? 'turnOn' : 'turnOff';
+        const action = value === this.Characteristic.Active.ACTIVE ? 'turnOn' : 'turnOff';
         return (0, function_1.pipe)(this.platform.alexaApi.setDeviceStateGraphQl(this.device.endpointId, 'toggle', action, {}, '4'), TE.match((e) => {
             this.logWithContext('errorT', 'Set auto mode', e);
             throw this.serviceCommunicationError;
         }, () => {
             this.updateCacheValue({
-                value: value ? 'ON' : 'OFF',
+                value: value === this.Characteristic.Active.ACTIVE ? 'ON' : 'OFF',
                 featureName: 'toggle',
             });
         }))();
+    }
+    async handleCurrentHeaterCoolerStateGet() {
+        const determineState = (0, function_1.flow)(A.findFirst(({ featureName }) => featureName === 'toggle'), O.map(({ value }) => value === 'ON'
+            ? this.Characteristic.CurrentHeaterCoolerState.COOLING
+            : this.Characteristic.CurrentHeaterCoolerState.INACTIVE));
+        return (0, function_1.pipe)(this.getStateGraphQl(determineState), TE.match((e) => {
+            this.logWithContext('errorT', 'Get heater cooler state', e);
+            throw this.serviceCommunicationError;
+        }, function_1.identity))();
     }
 }
 exports.default = FanAccessory;
