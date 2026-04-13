@@ -80,26 +80,28 @@ export class AlexaApiWrapper {
             reporter.id ===
               'amzn1.ask.skill.2af008bb-2bb0-4bef-b131-e191f944a87e'),
       );
-    // One-time introspection to discover available types for mode/toggle features
-    this.executeGraphQlQuery<Record<string, unknown>>(
-      `{ __type(name: "EndpointFeatureProperty") { possibleTypes { name } } }`,
-    )
+    // DEBUG: Test toggle command with instance to check if it controls direction
+    // This sends a turnOn to toggle instance 4 on the Vornado fan
+    const VORNADO_ENDPOINT_ID =
+      'amzn1.alexa.endpoint.33823809-75ac-401e-9013-9b87f84ce39f';
+    this.executeGraphQlQuery<Record<string, unknown>>(SetEndpointFeatures, {
+      featureControlRequests: [
+        {
+          endpointId: VORNADO_ENDPOINT_ID,
+          featureOperationName: 'turnOn',
+          featureName: 'toggle',
+          instance: '4',
+        },
+      ],
+    })
       .then((res) =>
         this.log.info(
-          `INTROSPECTION EndpointFeatureProperty: ${JSON.stringify(res, undefined, 2)}`,
+          `TOGGLE TEST RESULT: ${JSON.stringify(res, undefined, 2)}`,
         )(),
       )
-      .catch(() => {});
-
-    this.executeGraphQlQuery<Record<string, unknown>>(
-      `{ __type(name: "EndpointFeatureConfiguration") { possibleTypes { name } } }`,
-    )
-      .then((res) =>
-        this.log.info(
-          `INTROSPECTION EndpointFeatureConfiguration: ${JSON.stringify(res, undefined, 2)}`,
-        )(),
-      )
-      .catch(() => {});
+      .catch((err) =>
+        this.log.error(`TOGGLE TEST ERROR: ${err}`)(),
+      );
 
     return pipe(
       TE.tryCatch(
