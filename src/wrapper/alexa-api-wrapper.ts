@@ -80,27 +80,37 @@ export class AlexaApiWrapper {
             reporter.id ===
               'amzn1.ask.skill.2af008bb-2bb0-4bef-b131-e191f944a87e'),
       );
-    // DEBUG: Test toggle command with instance to check if it controls direction
-    // This sends a turnOn to toggle instance 4 on the Vornado fan
+    // DEBUG: Query all features with __typename to discover mode property/config types
     const VORNADO_ENDPOINT_ID =
       'amzn1.alexa.endpoint.33823809-75ac-401e-9013-9b87f84ce39f';
-    this.executeGraphQlQuery<Record<string, unknown>>(SetEndpointFeatures, {
-      featureControlRequests: [
-        {
-          endpointId: VORNADO_ENDPOINT_ID,
-          featureOperationName: 'turnOn',
-          featureName: 'toggle',
-          instance: '4',
-        },
-      ],
-    })
+    this.executeGraphQlQuery<Record<string, unknown>>(
+      `query getEndpointAllFeatures($endpointId: String!) {
+        endpoint(id: $endpointId) {
+          features {
+            name
+            instance
+            properties {
+              name
+              __typename
+            }
+            configuration {
+              __typename
+            }
+            operations {
+              name
+            }
+          }
+        }
+      }`,
+      { endpointId: VORNADO_ENDPOINT_ID },
+    )
       .then((res) =>
         this.log.info(
-          `TOGGLE TEST RESULT: ${JSON.stringify(res, undefined, 2)}`,
+          `ALL FEATURES WITH TYPES: ${JSON.stringify(res, undefined, 2)}`,
         )(),
       )
       .catch((err) =>
-        this.log.error(`TOGGLE TEST ERROR: ${err}`)(),
+        this.log.error(`ALL FEATURES QUERY ERROR: ${err}`)(),
       );
 
     return pipe(
