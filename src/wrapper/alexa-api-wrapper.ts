@@ -91,6 +91,12 @@ export class AlexaApiWrapper {
             }`,
           ),
       ),
+      TE.tap((raw) => {
+        this.log.debug(
+          `RAW GRAPHQL RESPONSE: ${JSON.stringify(raw, undefined, 2)}`,
+        )();
+        return TE.of(raw);
+      }),
       TE.flatMapEither(validateGetDevicesSuccessful),
       TE.map(A.filter(([e]) => excludeHomebridgeAlexaPluginDevices(e))),
       TE.tapIO((devices) => {
