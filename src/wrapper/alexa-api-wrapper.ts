@@ -70,6 +70,22 @@ export class AlexaApiWrapper {
     );
   }
 
+  debugQueryRestApi(entityId: string): void {
+    // One-time REST API query to see full device state
+    const ENTITY_ID = entityId.replace('amzn1.alexa.endpoint.', '');
+    AlexaApiWrapper.toPromise<Record<string, unknown>>((cb) =>
+      this.alexaRemote.querySmarthomeDevices([ENTITY_ID], 'APPLIANCE', cb),
+    )
+      .then((res) =>
+        this.log.info(
+          `REST API STATE: ${JSON.stringify(res, undefined, 2)}`,
+        )(),
+      )
+      .catch((err) =>
+        this.log.error(`REST API ERROR: ${err}`)(),
+      );
+  }
+
   getDevices(): TaskEither<AlexaApiError, SmartHomeDevice[]> {
     const excludeHomebridgeAlexaPluginDevices = (e: Endpoint) =>
       !(Array.isArray(e.endpointReports) ? e.endpointReports : []).some(
@@ -115,6 +131,8 @@ export class AlexaApiWrapper {
           this.deviceStore.updateCache([d.id], {
             [d.id]: O.of(states.map(E.right)),
           });
+          // Debug: query REST API for this device
+          this.debugQueryRestApi(d.endpointId);
         });
         return this.log.debug(
           'Successfully obtained devices and their capabilities',
