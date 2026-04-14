@@ -47,6 +47,7 @@ const plugin_logger_1 = require("./util/plugin-logger");
 const alexa_api_wrapper_1 = require("./wrapper/alexa-api-wrapper");
 class AlexaSmartHomePlatform {
     constructor(logger, config, api) {
+        var _a;
         this.logger = logger;
         this.api = api;
         this.HAP = this.api.hap;
@@ -75,7 +76,7 @@ class AlexaSmartHomePlatform {
         this.cookiePersistPath = `${api.user.persistPath()}/.${settings.PLUGIN_NAME}`;
         this.alexaRemote = new alexa_remote2_1.default();
         this.deviceStore = new device_store_1.default(this.config.performance);
-        this.alexaApi = new alexa_api_wrapper_1.AlexaApiWrapper(this.Service, this.alexaRemote, this.log, this.deviceStore);
+        this.alexaApi = new alexa_api_wrapper_1.AlexaApiWrapper(this.Service, this.alexaRemote, this.log, this.deviceStore, (_a = this.config.textCommandDevice) !== null && _a !== void 0 ? _a : undefined);
         const handleAuthResult = (0, function_1.flow)(O.match(() => {
             this.alexaRemote.cookie;
             return this.log.debug('Successfully authenticated Alexa account.');

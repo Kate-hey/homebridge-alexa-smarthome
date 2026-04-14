@@ -39,11 +39,12 @@ const save_device_capabilities_1 = require("../domain/alexa/save-device-capabili
 const set_device_state_js_1 = require("../domain/alexa/set-device-state.js");
 const graphql_1 = require("./graphql");
 class AlexaApiWrapper {
-    constructor(service, alexaRemote, log, deviceStore) {
+    constructor(service, alexaRemote, log, deviceStore, textCommandDeviceSerial) {
         this.service = service;
         this.alexaRemote = alexaRemote;
         this.log = log;
         this.deviceStore = deviceStore;
+        this.textCommandDeviceSerial = textCommandDeviceSerial;
         this.doesCacheContainAllIds = (cachedIds, queryIds) => queryIds.every((id) => {
             return cachedIds.includes(id);
         });
@@ -135,7 +136,10 @@ class AlexaApiWrapper {
                 name: (_b = (_a = serials[k]) === null || _a === void 0 ? void 0 : _a.deviceAccountId) !== null && _b !== void 0 ? _b : 'unknown',
             });
         }))}`)();
-        const firstSerial = serialKeys[0];
+        const firstSerial = this.textCommandDeviceSerial &&
+            serialKeys.includes(this.textCommandDeviceSerial)
+            ? this.textCommandDeviceSerial
+            : serialKeys[0];
         if (!firstSerial) {
             return TE.left(new errors_1.HttpError('No Alexa device found to route text command through'));
         }

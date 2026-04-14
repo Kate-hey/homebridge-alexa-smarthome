@@ -98,6 +98,7 @@ export class AlexaSmartHomePlatform implements DynamicPlatformPlugin {
       this.alexaRemote,
       this.log,
       this.deviceStore,
+      this.config.textCommandDevice ?? undefined,
     );
 
     const handleAuthResult = flow(

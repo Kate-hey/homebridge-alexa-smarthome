@@ -28,5 +28,6 @@ export interface AlexaPlatformConfig extends PlatformConfig {
         operations: Nullable<string>;
     }>>;
     debug: Nullable<boolean>;
+    textCommandDevice: Nullable<string>;
 }
 //# sourceMappingURL=index.d.ts.map

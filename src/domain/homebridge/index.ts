@@ -32,4 +32,5 @@ export interface AlexaPlatformConfig extends PlatformConfig {
     }>
   >;
   debug: Nullable<boolean>;
+  textCommandDevice: Nullable<string>;
 }

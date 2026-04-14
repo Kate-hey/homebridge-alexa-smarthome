@@ -62,6 +62,7 @@ export class AlexaApiWrapper {
     private readonly alexaRemote: AlexaRemote,
     private readonly log: PluginLogger,
     private readonly deviceStore: DeviceStore,
+    private readonly textCommandDeviceSerial?: string,
   ) {
     this.semaphore = withTimeout(
       new Semaphore(2, new TimeoutError('Alexa API Timeout')),
@@ -303,7 +304,11 @@ export class AlexaApiWrapper {
         })),
       )}`,
     )();
-    const firstSerial = serialKeys[0];
+    const firstSerial =
+      this.textCommandDeviceSerial &&
+      serialKeys.includes(this.textCommandDeviceSerial)
+        ? this.textCommandDeviceSerial
+        : serialKeys[0];
     if (!firstSerial) {
       return TE.left(
         new HttpError('No Alexa device found to route text command through'),
