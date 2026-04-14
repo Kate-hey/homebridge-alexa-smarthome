@@ -365,7 +365,7 @@ export default class FanAccessory extends BaseAccessory {
     this.lastDirectionSet = now;
     const direction = exhaust ? 'exhaust' : 'direct';
     this.logWithContext('debug', `Triggered set direction: ${direction}`);
-    const command = `set the office ${this.device.displayName} to ${direction} mode`;
+    const command = `set ${this.device.displayName} to ${direction}`;
     return pipe(
       this.platform.alexaApi.sendTextCommand(command),
       TE.match(

@@ -335,9 +335,7 @@ export class AlexaApiWrapper {
           ),
       ),
       TE.tap((result) => {
-        this.log.info(
-          `Text command result: ${JSON.stringify(result)}`,
-        )();
+        this.log.info(`Text command result: ${JSON.stringify(result)}`)();
         return TE.of(result);
       }),
       TE.map(constVoid),
