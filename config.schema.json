@@ -142,6 +142,13 @@
         "type": "boolean",
         "required": false,
         "default": false
+      },
+      "textCommandDevice": {
+        "title": "Text command device serial",
+        "description": "Serial number of the Alexa device to route text commands through (e.g., for fan direction control). Check the Homebridge logs at startup for 'Available Alexa devices' to find your device serial.",
+        "type": "string",
+        "required": false,
+        "placeholder": "Check Homebridge logs for available device serials"
       }
     }
   }
