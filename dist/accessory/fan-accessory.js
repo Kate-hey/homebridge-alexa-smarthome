@@ -41,6 +41,8 @@ class FanAccessory extends base_accessory_1.default {
         this.isExternalAccessory = false;
         this.isExhaust = false;
         this.lastDirectionSet = 0;
+        this.lastSpeedSet = 0;
+        this.currentSpeed = 0;
     }
     configureServices() {
         this.service =
@@ -50,10 +52,12 @@ class FanAccessory extends base_accessory_1.default {
             .getCharacteristic(this.Characteristic.Active)
             .onGet(this.handleActiveGet.bind(this))
             .onSet(this.handleActiveSet.bind(this));
-        // Remove stale RotationSpeed characteristic if present from previous version
-        if (this.service.testCharacteristic(this.Characteristic.RotationSpeed)) {
-            this.service.removeCharacteristic(this.service.getCharacteristic(this.Characteristic.RotationSpeed));
-        }
+        // Fan speed via text command (4 speeds mapped to 0-100%)
+        this.service
+            .getCharacteristic(this.Characteristic.RotationSpeed)
+            .setProps({ minValue: 0, maxValue: 100, minStep: 25 })
+            .onGet(() => this.currentSpeed)
+            .onSet(this.handleSpeedSet.bind(this));
         // Remove stale Switch service (old Auto Mode) if present — but keep direction switch
         const staleSwitches = this.platformAcc.services.filter((s) => s.UUID === this.Service.Switch.UUID && s.subtype !== 'exhaust-mode');
         for (const s of staleSwitches) {
@@ -236,6 +240,29 @@ class FanAccessory extends base_accessory_1.default {
             throw this.serviceCommunicationError;
         }, () => {
             this.isExhaust = exhaust;
+        }))();
+    }
+    async handleSpeedSet(value) {
+        if (typeof value !== 'number') {
+            throw this.invalidValueError;
+        }
+        const speed = Math.max(1, Math.min(4, Math.ceil(value / 25)));
+        if (value === this.currentSpeed) {
+            return;
+        }
+        const now = Date.now();
+        if (now - this.lastSpeedSet < 3000) {
+            this.logWithContext('debug', 'Debouncing speed set');
+            return;
+        }
+        this.lastSpeedSet = now;
+        this.logWithContext('debug', `Triggered set speed: ${speed} (${value}%)`);
+        const command = `set ${this.device.displayName} speed to ${speed}`;
+        return (0, function_1.pipe)(this.platform.alexaApi.sendTextCommand(command), TE.match((e) => {
+            this.logWithContext('errorT', 'Set speed', e);
+            throw this.serviceCommunicationError;
+        }, () => {
+            this.currentSpeed = value;
         }))();
     }
 }

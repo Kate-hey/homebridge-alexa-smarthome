@@ -21,6 +21,8 @@ export default class FanAccessory extends BaseAccessory {
   private setTempAsset?: RangeFeature;
   private isExhaust = false;
   private lastDirectionSet = 0;
+  private lastSpeedSet = 0;
+  private currentSpeed = 0;
 
   configureServices() {
     this.service =
@@ -32,12 +34,12 @@ export default class FanAccessory extends BaseAccessory {
       .onGet(this.handleActiveGet.bind(this))
       .onSet(this.handleActiveSet.bind(this));
 
-    // Remove stale RotationSpeed characteristic if present from previous version
-    if (this.service.testCharacteristic(this.Characteristic.RotationSpeed)) {
-      this.service.removeCharacteristic(
-        this.service.getCharacteristic(this.Characteristic.RotationSpeed),
-      );
-    }
+    // Fan speed via text command (4 speeds mapped to 0-100%)
+    this.service
+      .getCharacteristic(this.Characteristic.RotationSpeed)
+      .setProps({ minValue: 0, maxValue: 100, minStep: 25 })
+      .onGet(() => this.currentSpeed)
+      .onSet(this.handleSpeedSet.bind(this));
 
     // Remove stale Switch service (old Auto Mode) if present — but keep direction switch
     const staleSwitches = this.platformAcc.services.filter(
@@ -375,6 +377,36 @@ export default class FanAccessory extends BaseAccessory {
         },
         () => {
           this.isExhaust = exhaust;
+        },
+      ),
+    )();
+  }
+
+  async handleSpeedSet(value: CharacteristicValue): Promise<void> {
+    if (typeof value !== 'number') {
+      throw this.invalidValueError;
+    }
+    const speed = Math.max(1, Math.min(4, Math.ceil(value / 25)));
+    if (value === this.currentSpeed) {
+      return;
+    }
+    const now = Date.now();
+    if (now - this.lastSpeedSet < 3000) {
+      this.logWithContext('debug', 'Debouncing speed set');
+      return;
+    }
+    this.lastSpeedSet = now;
+    this.logWithContext('debug', `Triggered set speed: ${speed} (${value}%)`);
+    const command = `set ${this.device.displayName} speed to ${speed}`;
+    return pipe(
+      this.platform.alexaApi.sendTextCommand(command),
+      TE.match(
+        (e) => {
+          this.logWithContext('errorT', 'Set speed', e);
+          throw this.serviceCommunicationError;
+        },
+        () => {
+          this.currentSpeed = value;
         },
       ),
     )();

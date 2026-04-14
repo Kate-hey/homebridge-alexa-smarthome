@@ -19,7 +19,6 @@ export declare class AlexaApiWrapper {
     private readonly textCommandDeviceSerial?;
     private readonly semaphore;
     constructor(service: typeof Service, alexaRemote: AlexaRemote, log: PluginLogger, deviceStore: DeviceStore, textCommandDeviceSerial?: string | undefined);
-    debugQueryRestApi(entityId: string): void;
     getDevices(): TaskEither<AlexaApiError, SmartHomeDevice[]>;
     getDeviceStateGraphQl(device: SmartHomeDevice, service: Service, useCache: boolean): TaskEither<AlexaApiError, [boolean, CapabilityState[]]>;
     setDeviceStateGraphQl(endpointId: string, featureName: SupportedFeatures, featureOperationName: SupportedActionsType, payload?: Record<string, unknown>, instance?: string): TaskEither<AlexaApiError, void>;
